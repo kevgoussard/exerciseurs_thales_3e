@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exerciseur — Théorème de Thalès · 3e</title>
+<style>
+:root{--ok:#16834b;--bad:#c62828;--ink:#243044;--muted:#64748b;--bg:#f5f7fb;--card:#fff;--accent:#315efb}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#172554;color:#fff;padding:22px 28px}
+header h1{margin:0 0 5px;font-size:1.45rem} header p{margin:0;opacity:.9}
+main{max-width:1120px;margin:22px auto;padding:0 16px}
+.topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+button{border:0;border-radius:9px;padding:11px 16px;font-weight:700;cursor:pointer}
+.primary{background:var(--accent);color:white}.secondary{background:#e8edf7;color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(350px,1fr) minmax(430px,1fr);gap:18px;margin-top:16px}
+.card{background:var(--card);border-radius:14px;padding:20px;box-shadow:0 2px 12px #1e293b12}
+.card h2{font-size:1.05rem;margin:0 0 14px}
+.diagram-wrap{position:relative;overflow:hidden;border-radius:10px}
+#diagram{width:100%;height:390px;border:1px solid #dbe2ee;border-radius:10px;background:#fff;display:block;overflow:visible}
+.zoom-controls{position:absolute;z-index:2;top:10px;right:10px;display:flex;gap:6px}
+.zoom-btn{min-width:42px;padding:7px 10px;font-size:1.05rem;line-height:1}
+#diagram{cursor:grab;touch-action:none;user-select:none}
+#diagram.dragging{cursor:grabbing}
+.statement{font-size:1.05rem;line-height:1.5;padding:13px 15px;background:#eef3ff;border-left:4px solid var(--accent);border-radius:8px;margin-top:14px}
+.data-box{margin-top:14px;padding:12px 15px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;line-height:1.7}
+.data-box strong{font-weight:750}
+.step{border-top:1px solid #e5e7eb;padding-top:15px;margin-top:15px}
+.row{margin:12px 0;line-height:1.8}
+select,input{font:inherit;border:1px solid #b9c3d3;border-radius:7px;padding:6px 8px;background:#fff}
+select{min-width:95px}.point-select{min-width:70px}
+input.short{width:82px;text-align:center}
+.hint{color:var(--muted);font-size:.9rem}
+.fracs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.05;margin:0 3px}
+.frac input{width:76px;text-align:center;padding:4px}.frac .den{border-top:1px solid #243044}
+.prop-table{border-collapse:collapse;margin:12px 0 8px;width:100%;table-layout:auto}
+.prop-table td{border:1px solid #b9c3d3;padding:5px;text-align:center;vertical-align:middle}
+.prop-table input{width:88px;text-align:center}
+.triangle-cell{white-space:nowrap;text-align:center;font-weight:600;min-width:145px}
+.triangle-cell input{width:54px;margin-left:5px;text-transform:uppercase}
+.triangle-cell.readonly{background:#f8fafc}
+.calc{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.feedback{margin-top:18px;padding:12px 14px;border-radius:9px;display:none}
+.feedback.bad{display:block;background:#fff0f0;color:var(--bad)}
+.feedback.good{display:block;background:#ecfbf3;color:var(--ok)}
+.wrong{border-color:var(--bad)!important;background:#fff3f3!important}
+.correct{border-color:var(--ok)!important;background:#f0fff6!important}
+.score{font-weight:700;color:#172554}
+@media(max-width:850px){.grid{grid-template-columns:1fr}#diagram{height:330px}}
+</style>
+
+<style>
+#progressLabel{margin-right:18px}
+#scoreLabel{font-weight:700}
+.correction{
+  display:inline-block;
+  margin-left:8px;
+  color:#b42318;
+  font-size:.88em;
+  font-weight:600;
+}
+.step-locked{opacity:.65}
+.hint-btn{background:#fff4cc;color:#7a5200;border:1px solid #e4c45c;padding:7px 12px}.hint-count{color:#64748b;font-size:.9rem}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+<header>
+<h1>Séquence : Théorème de Thalès et sa réciproque</h1>
+<p>Je m'entraine à calculer une longueur avec le théorème de Thalès</p>
+</header>
+
+<main>
+<div class="topbar">
+<div><span class="score" id="progressLabel"></span><span class="score" id="scoreLabel"></span></div>
+<div><button class="primary" id="checkBtn">Vérifier</button>
+<button class="secondary" id="nextBtn" disabled>Exercice suivant</button></div>
+</div>
+
+<div class="grid">
+<section class="card">
+<h2>1. Observer la figure</h2>
+<div class="diagram-wrap">
+    <div class="zoom-controls" aria-label="Contrôles du zoom">
+      <button type="button" class="secondary zoom-btn" id="zoomOut" aria-label="Zoom arrière">−</button>
+      <button type="button" class="secondary zoom-btn" id="zoomReset" aria-label="Réinitialiser le zoom">100 %</button>
+      <button type="button" class="secondary zoom-btn" id="zoomIn" aria-label="Zoom avant">+</button>
+    </div>
+    <svg id="diagram" viewBox="0 0 520 390" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Configuration de Thalès"></svg>
+  </div>
+<div class="data-box" id="dataBox"></div>
+<div class="statement" id="question"></div>
+
+</section>
+
+<section class="card">
+<h2>2. Compléter la rédaction</h2>
+<div id="form"></div>
+<div id="feedback" class="feedback"></div>
+</section>
+</div>
+<div id="submissionPanel" class="card" style="margin-top:18px;display:none">
+<h2>3. Envoyer le résultat</h2>
+<div class="row">Prénom : <input id="studentFirstName" autocomplete="given-name"></div>
+<div class="row">Classe : <input id="studentClass" autocomplete="off"></div>
+<button type="button" class="primary" id="sendResultBtn">Envoyer</button>
+<div id="sendStatus" class="feedback"></div>
+</div>
+</main>
+
+<script>
+let ex=null;
+let exercises=[];
+let currentIndex=0;
+let attemptCount=0;
+let totalScore=0;
+let exerciseScored=false;
+let hintUsed=0;
+const MAX_HINTS=3;
+let sessionHintsUsed=0;
+const MAX_SESSION_HINTS=3;
+
+const pointNames=["A","B","C","D","E","F","O"];
+const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const choice=a=>a[Math.floor(Math.random()*a.length)];
+const fmt=n=>Number.isInteger(n)?String(n):String(Math.round(n*10)/10).replace(".",",");
+const randDec=(a,b)=>Math.round((a+Math.random()*(b-a))*10)/10;
+
+function line(svg,x1,y1,x2,y2){
+ const l=document.createElementNS("http://www.w3.org/2000/svg","line");
+ l.setAttribute("x1",x1);l.setAttribute("y1",y1);l.setAttribute("x2",x2);l.setAttribute("y2",y2);
+ l.setAttribute("stroke","#334155");l.setAttribute("stroke-width","2.5");
+ svg.appendChild(l);
+}
+function svgText(svg,x,y,text,size=17,weight=600){
+ const t=document.createElementNS("http://www.w3.org/2000/svg","text");
+ t.setAttribute("x",x);t.setAttribute("y",y);t.textContent=text;
+ t.setAttribute("font-size",size);t.setAttribute("font-weight",weight);
+ t.setAttribute("text-anchor","middle");t.setAttribute("fill","#243044");
+ svg.appendChild(t);
+}
+function point(svg,x,y,label,dx=0,dy=0){
+ const c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+ c.setAttribute("cx",x);c.setAttribute("cy",y);c.setAttribute("r",4.5);c.setAttribute("fill","#172554");
+ svg.appendChild(c);svgText(svg,x+dx,y+dy,label,17,700);
+}
+
+function makeNested(){
+  // Toutes les longueurs sont des multiples exacts de 0,1 cm.
+  // On construit AB=q*k, AE=p*k, BC=q*n et EF=p*n :
+  // les rapports de Thalès sont donc exacts, sans arrondi caché.
+  const ratios=[[1,2],[1,3],[2,3],[3,4],[2,5],[3,5],[3,7],[4,7],[5,8],[7,10]];
+  const [p,q]=choice(ratios);
+
+  let k,n,m,AB,AE,AC,BC,EF;
+  for(let tries=0;tries<500;tries++){
+    k=rand(15,45)/10;
+    n=rand(15,55)/10;
+    m=rand(15,55)/10;
+
+    AB=q*k;
+    AE=p*k;
+    AC=q*m;
+    BC=q*n;
+    EF=p*n;
+
+    // Triangle strictement valide et clairement non isocèle.
+    if(Math.abs(AB-AC)>0.5 && Math.abs(AB-BC)>0.5 && Math.abs(AC-BC)>0.5 &&
+       Math.abs(AB-AC)<BC && BC<AB+AC) break;
+  }
+
+  const W=520,H=360,margin=58;
+  const xA=(AB*AB+BC*BC-AC*AC)/(2*BC);
+  const height=Math.sqrt(Math.max(0,AB*AB-xA*xA));
+  const s=Math.min((W-2*margin)/BC,(H-2*margin)/height);
+
+  const B={x:margin,y:H-margin};
+  const C={x:margin+BC*s,y:H-margin};
+  const A={x:margin+xA*s,y:H-margin-height*s};
+
+  const r=p/q;
+  const E={x:A.x+(B.x-A.x)*r,y:A.y+(B.y-A.y)*r};
+  const F={x:A.x+(C.x-A.x)*r,y:A.y+(C.y-A.y)*r};
+
+  return {type:"Triangles emboîtés",target:"EF",points:{A,B,C,E,F},
+    known:{AB,AC,AE,BC},answer:EF,
+    align:[["A","E","B"],["A","F","C"]],
+    parallel:["(EF)","(BC)"],
+    ratios:[["AE","AB"],["AF","AC"],["EF","BC"]]};
+}
+
+function makeButterfly(){
+  // AO=p*k, OB=q*k, CO=p*n, OD=q*n :
+  // toutes les longueurs sont donc exactement au dixième.
+  const ratios=[[1,2],[1,3],[2,3],[3,4],[2,5],[3,5],[3,7],[4,7],[5,8],[7,10]];
+  const [p,q]=choice(ratios);
+
+  let k,n,AO,OB,CO,OD;
+  for(let tries=0;tries<500;tries++){
+    k=rand(15,45)/10;
+    n=rand(15,65)/10;
+    AO=p*k;
+    OB=q*k;
+    CO=p*n;
+    OD=q*n;
+    if(Math.abs(AO-OB)>0.5 && Math.abs(CO-OD)>0.5) break;
+  }
+
+  const W=520,H=360,margin=58,O={x:W/2,y:H/2};
+  const theta=Math.PI*0.32;
+  const ux=Math.cos(theta),uy=Math.sin(theta);
+  const vx=Math.cos(-theta),vy=Math.sin(-theta);
+  const maxTotal=Math.max(AO+OB,CO+OD);
+  const scale=Math.min(
+    (W-2*margin)/(2*maxTotal*Math.max(Math.abs(ux),Math.abs(vx))),
+    (H-2*margin)/(2*maxTotal*Math.max(Math.abs(uy),Math.abs(vy)))
+  );
+
+  const A={x:O.x-AO*scale*ux,y:O.y-AO*scale*uy};
+  const B={x:O.x+OB*scale*ux,y:O.y+OB*scale*uy};
+  const C={x:O.x-CO*scale*vx,y:O.y-CO*scale*vy};
+  const D={x:O.x+OD*scale*vx,y:O.y+OD*scale*vy};
+
+  return {type:"Configuration en papillon",target:"OD",points:{A,B,C,D,O},
+    known:{AO,OB,CO},answer:OD,
+    align:[["A","O","B"],["C","O","D"]],
+    parallel:["(AC)","(BD)"],
+    ratios:[["AO","OB"],["CO","OD"],["AC","BD"]]};
+}
+
+let zoomLevel=1;
+let panX=0,panY=0;
+let dragState=null;
+function applyZoom(){
+  const svg=document.getElementById("diagram");
+  const z=Math.max(0.6,Math.min(2.2,zoomLevel));
+  const w=520/z,h=390/z;
+  const maxX=Math.max(0,(520-w)/2);
+  const maxY=Math.max(0,(390-h)/2);
+  panX=Math.max(-maxX,Math.min(maxX,panX));
+  panY=Math.max(-maxY,Math.min(maxY,panY));
+  const x=(520-w)/2-panX;
+  const y=(390-h)/2-panY;
+  svg.setAttribute("viewBox",`${x} ${y} ${w} ${h}`);
+  document.getElementById("zoomReset").textContent=`${Math.round(z*100)} %`;
+}
+function initZoom(){
+  document.getElementById("zoomIn").addEventListener("click",()=>{
+    zoomLevel=Math.min(2.2,Math.round((zoomLevel+0.2)*10)/10);
+    applyZoom();
+  });
+  document.getElementById("zoomOut").addEventListener("click",()=>{
+    zoomLevel=Math.max(0.6,Math.round((zoomLevel-0.2)*10)/10);
+    applyZoom();
+  });
+  document.getElementById("zoomReset").addEventListener("click",()=>{
+    zoomLevel=1; panX=0; panY=0; applyZoom();
+  });
+  const svg=document.getElementById("diagram");
+  svg.addEventListener("pointerdown",e=>{
+    if(e.button!==0 && e.pointerType!=="touch") return;
+    dragState={x:e.clientX,y:e.clientY,panX,panY};
+    svg.setPointerCapture?.(e.pointerId);
+    svg.classList.add("dragging");
+  });
+  svg.addEventListener("pointermove",e=>{
+    if(!dragState) return;
+    const rect=svg.getBoundingClientRect();
+    const z=Math.max(0.6,Math.min(2.2,zoomLevel));
+    const unitsPerPixel=(520/z)/rect.width;
+    panX=dragState.panX-(e.clientX-dragState.x)*unitsPerPixel;
+    panY=dragState.panY-(e.clientY-dragState.y)*unitsPerPixel;
+    applyZoom();
+  });
+  const stopDrag=e=>{
+    if(!dragState) return;
+    dragState=null;
+    svg.classList.remove("dragging");
+    try{svg.releasePointerCapture?.(e.pointerId)}catch(_){}
+  };
+  svg.addEventListener("pointerup",stopDrag);
+  svg.addEventListener("pointercancel",stopDrag);
+  applyZoom();
+}
+
+function draw(d){
+ const s=document.getElementById("diagram");s.innerHTML="";
+ const p=d.points;
+ if(d.type==="Triangles emboîtés"){
+   line(s,p.A.x,p.A.y,p.B.x,p.B.y);line(s,p.A.x,p.A.y,p.C.x,p.C.y);
+   line(s,p.B.x,p.B.y,p.C.x,p.C.y);line(s,p.E.x,p.E.y,p.F.x,p.F.y);
+   [["A",p.A,0,-12],["B",p.B,-14,20],["C",p.C,14,20],["E",p.E,-17,2],["F",p.F,17,2]]
+     .forEach(a=>point(s,a[1].x,a[1].y,a[0],a[2],a[3]));
+ }else{
+   line(s,p.A.x,p.A.y,p.B.x,p.B.y);line(s,p.C.x,p.C.y,p.D.x,p.D.y);
+   line(s,p.A.x,p.A.y,p.C.x,p.C.y);line(s,p.B.x,p.B.y,p.D.x,p.D.y);
+   [["A",p.A,-14,-10],["B",p.B,14,20],["C",p.C,-14,20],["D",p.D,14,-10],["O",p.O,0,23]]
+     .forEach(a=>point(s,a[1].x,a[1].y,a[0],a[2],a[3]));
+ }
+}
+
+function pointSelect(id){
+ return `<select id="${id}" class="point-select"><option value="">...</option>
+ ${pointNames.map(p=>`<option value="${p}">${p}</option>`).join("")}</select>`;
+}
+function wordSelect(id,opts){
+ return `<select id="${id}"><option value="">...</option>${opts.map(x=>`<option value="${x}">${x}</option>`).join("")}</select>`;
+}
+function input(id){return `<input class="short" id="${id}" inputmode="decimal" autocomplete="off">`;}
+
+function buildForm(d){
+ const f=document.getElementById("form");
+ const parallelOptions=d.type==="Triangles emboîtés"
+   ? ["(EF)","(BC)","(AE)","(AF)","(AC)","(AB)"]
+   : ["(AC)","(BD)","(AO)","(OB)","(CO)","(OD)"];
+ f.innerHTML=`
+ <div class="step">
+ <b>On vérifie les hypothèses :</b>
+ <div class="row">
+ Les points ${pointSelect("a1p1")}, ${pointSelect("a1p2")} et ${pointSelect("a1p3")} sont alignés.
+ De même, les points ${pointSelect("a2p1")}, ${pointSelect("a2p2")} et ${pointSelect("a2p3")} sont alignés.
+ </div>
+ <div class="row">
+ Les droites ${wordSelect("parallel1",parallelOptions)} et ${wordSelect("parallel2",parallelOptions)} sont parallèles.
+ </div>
+ </div>
+ <div class="step">
+ <b>On peut donc appliquer le théorème de Thalès :</b>
+ <div class="row">On complète le tableau de proportionnalité :</div>
+ <table class="prop-table" aria-label="Tableau de proportionnalité">
+   <tr>
+     <td class="triangle-cell">Triangle <input id="tri1a" maxlength="3" aria-label="Nom du triangle de la première ligne"></td>
+     <td><input id="n1" aria-label="Première longueur de la première ligne"></td>
+     <td><input id="n2" aria-label="Deuxième longueur de la première ligne"></td>
+     <td><input id="n3" aria-label="Troisième longueur de la première ligne"></td>
+   </tr>
+   <tr>
+     <td class="triangle-cell">Triangle <input id="tri2a" maxlength="3" aria-label="Nom du triangle de la deuxième ligne"></td>
+     <td><input id="d1" aria-label="Première longueur de la deuxième ligne"></td>
+     <td><input id="d2" aria-label="Deuxième longueur de la deuxième ligne"></td>
+     <td><input id="d3" aria-label="Troisième longueur de la deuxième ligne"></td>
+   </tr>
+ </table>
+ <div class="row"><button type="button" class="hint-btn" id="hintBtn">Indice</button> <span id="hintCount" class="hint-count"></span></div>
+ <div id="ratioCorrection"></div>
+ </div>
+ <div class="step">
+ <b>On remplace les longueurs connues par leurs valeurs :</b>
+ <div class="row">On complète le tableau de proportionnalité avec les données numériques lorsqu'elles sont connues. Pour une longueur inconnue, conserve sa notation.</div>
+ <table class="prop-table" aria-label="Tableau de proportionnalité numérique">
+   <tr>
+     <td class="triangle-cell readonly">Triangle <input id="tri1b" maxlength="3" aria-label="Nom du triangle de la première ligne" readonly></td>
+     <td><input id="v1n" aria-label="Première valeur de la première ligne"></td>
+     <td><input id="v2n" aria-label="Deuxième valeur de la première ligne"></td>
+     <td><input id="v3n" aria-label="Troisième valeur de la première ligne"></td>
+   </tr>
+   <tr>
+     <td class="triangle-cell readonly">Triangle <input id="tri2b" maxlength="3" aria-label="Nom du triangle de la deuxième ligne" readonly></td>
+     <td><input id="v1d" aria-label="Première valeur de la deuxième ligne"></td>
+     <td><input id="v2d" aria-label="Deuxième valeur de la deuxième ligne"></td>
+     <td><input id="v3d" aria-label="Troisième valeur de la deuxième ligne"></td>
+   </tr>
+ </table>
+ <div id="valuesCorrection"></div>
+ </div>
+ <div class="step">
+ <div class="row"><b>Calcul de ${d.target} :</b></div>
+ <div class="calc">${input("calc1")} × ${input("calc2")} ÷ ${input("calc3")} = ${input("calc4")} cm</div>
+ <div class="row"><b>Réponse :</b> ${input("answer")} cm</div>
+ </div>
+ <p class="hint">Les réponses incorrectes apparaîtront en rouge après vérification.</p>`;
+ const hintBtn=document.getElementById("hintBtn");
+ hintBtn.disabled=sessionHintsUsed>=MAX_SESSION_HINTS;
+ document.getElementById("hintCount").textContent=`${sessionHintsUsed} / ${MAX_SESSION_HINTS} indices utilisés sur les 3 exercices`;
+ const tri1a=document.getElementById("tri1a"), tri2a=document.getElementById("tri2a");
+ const tri1b=document.getElementById("tri1b"), tri2b=document.getElementById("tri2b");
+ const syncTriangleNames=()=>{ tri1b.value=tri1a.value.toUpperCase(); tri2b.value=tri2a.value.toUpperCase(); };
+ tri1a.addEventListener("input",syncTriangleNames);
+ tri2a.addEventListener("input",syncTriangleNames);
+ syncTriangleNames();
+ hintBtn.addEventListener("click",giveHint);
+}
+
+function giveHint(){
+  if(exerciseScored || sessionHintsUsed>=MAX_SESSION_HINTS)return;
+  const slots=[["n1","d1"],["n2","d2"],["n3","d3"]];
+  const empty=slots.find(pair=>!get(pair[0])&&!get(pair[1]))||slots[0];
+  const candidates=ex.ratios.filter(r=>!slots.some(pair=>get(pair[0])===r[0]&&get(pair[1])===r[1]));
+  const r=choice(candidates.length?candidates:ex.ratios);
+  document.getElementById(empty[0]).value=r[0];
+  document.getElementById(empty[1]).value=r[1];
+  hintUsed++;
+  sessionHintsUsed++;
+  document.getElementById("hintCount").textContent=`${sessionHintsUsed} / ${MAX_SESSION_HINTS} indices utilisés sur les 3 exercices`;
+  if(sessionHintsUsed>=MAX_SESSION_HINTS){
+    const b=document.getElementById("hintBtn");
+    b.disabled=true;
+    b.textContent="Indice (limite atteinte)";
+  }
+}
+
+function get(id){return document.getElementById(id)?.value.trim();}
+function num(id){return Number((get(id)||"").replace(",","."));}
+function mark(id,ok){
+ const e=document.getElementById(id);if(!e)return;
+ e.classList.toggle("correct",!!ok);e.classList.toggle("wrong",!ok);
+}
+function same(a,b){return String(a).toUpperCase()===String(b).toUpperCase();}
+function numeq(a,b){return Number.isFinite(a)&&Math.abs(a-b)<0.011;}
+function sameSet(a,b){return a.length===b.length && [...a].sort().join("|")===[...b].sort().join("|");}
+function segmentSame(a,b){
+ if(!a||!b)return false;
+ const x=a.toUpperCase(),y=b.toUpperCase();
+ return x===y || (x.length===2&&y.length===2&&x[0]===y[1]&&x[1]===y[0]);
+}
+function ratioPairSame(a,b,inverted=false){
+  return !!a[0] && !!a[1] && !!b[0] && !!b[1] &&
+         (inverted
+           ? segmentSame(a[0],b[1]) && segmentSame(a[1],b[0])
+           : segmentSame(a[0],b[0]) && segmentSame(a[1],b[1]));
+}
+function permute(arr){
+ if(arr.length<=1)return [arr];
+ const out=[];
+ arr.forEach((v,i)=>permute(arr.slice(0,i).concat(arr.slice(i+1))).forEach(p=>out.push([v,...p])));
+ return out;
+}
+function ratiosAreCorrect(){
+ const actual=[[get("n1"),get("d1")],[get("n2"),get("d2")],[get("n3"),get("d3")]];
+ if(actual.some(r=>!r[0]||!r[1]))return false;
+ // L'ordre des 3 rapports est totalement libre :
+ // r1 = r2 = r3 est équivalent à r2 = r3 = r1, etc.
+ // On accepte aussi l'écriture avec tous les rapports inversés.
+ // Exemple : OA/OB = OC/OD = AC/BD est équivalent à
+ // OC/OD = AC/BD = OA/OB et à OB/OA = BD/AC = OD/OC.
+ return permute(ex.ratios).some(order=>
+   [false,true].some(inverted=>actual.every((r,i)=>ratioPairSame(r,order[i],inverted)))
+ );
+}
+function expectedRatioText(){
+ return ex.ratios.map(r=>`${r[0]} / ${r[1]}`).join(" = ");
+}
+function displayRatioToken(name){
+ const v=ex.known[name];
+ return v!==undefined ? fmt(v) : name;
+}
+function expectedValueRatios(){
+ return ex.ratios.map(r=>[displayRatioToken(r[0]),displayRatioToken(r[1])]);
+}
+function valueTokenSame(actual,expected){
+ const a=String(actual||"").trim().toUpperCase();
+ const e=String(expected||"").trim().toUpperCase();
+ if(!a || !e)return false;
+ const an=Number(a.replace(",","."));
+ const en=Number(e.replace(",","."));
+ if(Number.isFinite(an) && Number.isFinite(en)) return numeq(an,en);
+ // Pour une longueur inconnue, l'ordre des lettres du segment n'a pas
+ // d'importance : AC = CA, BD = DB, OD = DO, etc.
+ return segmentSame(a,e);
+}
+function valueRatiosAreCorrect(){
+ const actual=[[get("v1n"),get("v1d")],[get("v2n"),get("v2d")],[get("v3n"),get("v3d")]];
+ if(actual.some(r=>!r[0]||!r[1]))return false;
+ // Même règle que pour l'étape précédente : les 3 égalités peuvent être
+ // écrites dans n'importe quel ordre. L'inversion globale des fractions est
+ // également acceptée.
+ return permute(expectedValueRatios()).some(order=>
+   [false,true].some(inverted=>actual.every((r,i)=>
+     inverted
+       ? valueTokenSame(r[0],order[i][1]) && valueTokenSame(r[1],order[i][0])
+       : valueTokenSame(r[0],order[i][0]) && valueTokenSame(r[1],order[i][1])
+   ))
+ );
+}
+function expectedValueRatioText(){
+ return expectedValueRatios().map(r=>`${r[0]} / ${r[1]}`).join(" = ");
+}
+function normalizeTriangleName(value){
+  return String(value||"").toUpperCase().replace(/[^A-Z]/g,"");
+}
+function triangleNameSame(value, expected){
+  const v=normalizeTriangleName(value), e=normalizeTriangleName(expected);
+  return v.length===3 && [...v].sort().join("")===[...e].sort().join("");
+}
+
+function clearCorrections(){
+ document.querySelectorAll(".correction").forEach(e=>e.remove());
+ document.querySelectorAll("input,select").forEach(e=>e.classList.remove("wrong","correct"));
+}
+function addCorrection(id,text){
+ const e=document.getElementById(id); if(!e)return;
+ let c=document.createElement("span"); c.className="correction"; c.textContent=`Correction : ${text}`;
+ e.insertAdjacentElement("afterend",c);
+}
+
+function check(){
+ if(exerciseScored)return;
+ attemptCount++;
+ let allOK=true;
+
+ const [a1,a2]=ex.align;
+ const t1=[get("a1p1"),get("a1p2"),get("a1p3")];
+ const t2=[get("a2p1"),get("a2p2"),get("a2p3")];
+ const alignOK=(sameSet(t1,a1)&&sameSet(t2,a2))||(sameSet(t1,a2)&&sameSet(t2,a1));
+ ["a1p1","a1p2","a1p3"].forEach(id=>mark(id,alignOK));
+ ["a2p1","a2p2","a2p3"].forEach(id=>mark(id,alignOK));
+ if(!alignOK)allOK=false;
+
+ const parallelOK=(get("parallel1")===ex.parallel[0]&&get("parallel2")===ex.parallel[1])||
+                  (get("parallel1")===ex.parallel[1]&&get("parallel2")===ex.parallel[0]);
+ mark("parallel1",parallelOK);mark("parallel2",parallelOK);
+ if(!parallelOK)allOK=false;
+
+ const ratiosOK=ratiosAreCorrect();
+ // Les deux lignes du tableau sont interchangeables.
+ // Le nom du triangle de chaque ligne est donc déterminé uniquement par
+ // les trois côtés réellement saisis sur cette ligne. Toutes les permutations
+ // des trois sommets sont acceptées (ABC, ACB, BAC, etc.).
+ const triangleVertices=(sideNames)=>{
+   const letters=[...new Set(sideNames.flatMap(seg=>String(seg).toUpperCase().match(/[A-Z]/g)||[]))];
+   return letters.length===3 ? letters.join("") : "";
+ };
+ const row1Sides=[get("n1"),get("n2"),get("n3")];
+ const row2Sides=[get("d1"),get("d2"),get("d3")];
+ const expectedTriangle1=triangleVertices(row1Sides);
+ const expectedTriangle2=triangleVertices(row2Sides);
+ const triangle1OK=!!expectedTriangle1 && triangleNameSame(get("tri1a"),expectedTriangle1);
+ const triangle2OK=!!expectedTriangle2 && triangleNameSame(get("tri2a"),expectedTriangle2);
+ const trianglesOK=triangle1OK&&triangle2OK;
+ mark("tri1a",triangle1OK); mark("tri2a",triangle2OK);
+ if(!trianglesOK)allOK=false;
+
+["n1","d1","n2","d2","n3","d3"].forEach(id=>mark(id,ratiosOK));
+ if(!ratiosOK)allOK=false;
+
+ const valuesOK=valueRatiosAreCorrect();
+ ["v1n","v1d","v2n","v2d","v3n","v3d"].forEach(id=>mark(id,valuesOK));
+ if(!valuesOK)allOK=false;
+
+ let calcOK, answerOK;
+ if(ex.type==="Triangles emboîtés"){
+   const c1=num("calc1"),c2=num("calc2"),c3=num("calc3"),c4=num("calc4");
+   calcOK=((numeq(c1,ex.known.AE)&&numeq(c2,ex.known.BC))||
+           (numeq(c1,ex.known.BC)&&numeq(c2,ex.known.AE)))&&numeq(c3,ex.known.AB)&&numeq(c4,ex.answer);
+ }else{
+   const c1=num("calc1"),c2=num("calc2"),c3=num("calc3"),c4=num("calc4");
+   calcOK=((numeq(c1,ex.known.CO)&&numeq(c2,ex.known.OB))||
+           (numeq(c1,ex.known.OB)&&numeq(c2,ex.known.CO)))&&numeq(c3,ex.known.AO)&&numeq(c4,ex.answer);
+ }
+ ["calc1","calc2","calc3","calc4"].forEach(id=>mark(id,calcOK));
+ if(!calcOK)allOK=false;
+ answerOK=numeq(num("answer"),ex.answer);
+ mark("answer",answerOK);
+ if(!answerOK)allOK=false;
+
+ const fb=document.getElementById("feedback");
+ clearCorrections(); // reset only visual corrections; reapply below
+ // Reapply wrong/correct classes because clearCorrections removes them.
+ const reMark=(id,ok)=>mark(id,ok);
+ ["a1p1","a1p2","a1p3","a2p1","a2p2","a2p3"].forEach(id=>reMark(id,alignOK));
+ reMark("parallel1",parallelOK);reMark("parallel2",parallelOK);
+   reMark("tri1a",triangle1OK);reMark("tri2a",triangle2OK);
+["n1","d1","n2","d2","n3","d3"].forEach(id=>reMark(id,ratiosOK));
+ ["v1n","v1d","v2n","v2d","v3n","v3d"].forEach(id=>reMark(id,valuesOK));
+ ["calc1","calc2","calc3","calc4"].forEach(id=>reMark(id,calcOK));
+ reMark("answer",answerOK);
+
+ if(allOK){
+   const pts=attemptCount===1?2:1;
+   totalScore+=pts;exerciseScored=true;
+   fb.className="feedback good";
+   fb.textContent=`Bravo ! Exercice réussi en ${attemptCount} vérification${attemptCount>1?"s":""}. +${pts} pt${pts>1?"s":""}. ${hintUsed} indice${hintUsed>1?"s":""} utilisé${hintUsed>1?"s":""}.`;
+   document.getElementById("checkBtn").disabled=true;
+   document.getElementById("nextBtn").disabled=false;
+ }else if(attemptCount>=2){
+   exerciseScored=true;
+   fb.className="feedback bad";
+   fb.textContent=`Il reste des erreurs. Cet exercice vaut 0 pt. ${hintUsed} indice${hintUsed>1?"s":""} utilisé${hintUsed>1?"s":""}. Voici les corrections.`;
+   if(!alignOK){
+     addCorrection("a1p3",`${a1.join(", ")} ; ${a2.join(", ")}`);
+     addCorrection("a2p3",`${a1.join(", ")} ; ${a2.join(", ")}`);
+   }
+   if(!parallelOK){
+     addCorrection("parallel2",`${ex.parallel[0]} et ${ex.parallel[1]}`);
+   }    if(!trianglesOK){
+      addCorrection("tri1a",expectedTriangle1);
+      addCorrection("tri2a",expectedTriangle2);
+    }
+   if(!ratiosOK){
+     document.getElementById("ratioCorrection").innerHTML=
+       `<span class="correction">Correction : ${expectedRatioText()}</span>`;
+   }
+   if(!valuesOK){
+     document.getElementById("valuesCorrection").innerHTML=
+       `<span class="correction">Correction : ${expectedValueRatioText()}</span>`;
+   }
+   if(!calcOK){
+     if(ex.type==="Triangles emboîtés")
+       addCorrection("calc4",`${fmt(ex.known.AE)} × ${fmt(ex.known.BC)} ÷ ${fmt(ex.known.AB)} = ${fmt(ex.answer)} cm`);
+     else
+       addCorrection("calc4",`${fmt(ex.known.CO)} × ${fmt(ex.known.OB)} ÷ ${fmt(ex.known.AO)} = ${fmt(ex.answer)} cm`);
+   }
+   if(!answerOK)addCorrection("answer",`${fmt(ex.answer)} cm`);
+   document.getElementById("checkBtn").disabled=true;
+   document.getElementById("nextBtn").disabled=false;
+ }else{
+   fb.className="feedback bad";
+   fb.textContent="Il y a encore des erreurs. Corrige-les puis vérifie à nouveau. Il s'agit de ta 1re vérification.";
+ }
+ updateScore();
+}
+
+function updateScore(){
+ document.getElementById("scoreLabel").textContent=`Score : ${totalScore} / 6 pts`;
+ document.getElementById("progressLabel").textContent=`Exercice ${currentIndex+1} / 3`;
+ if(exerciseScored && currentIndex===2) document.getElementById("submissionPanel").style.display="block";
+}
+function loadExercise(i){
+ currentIndex=i; ex=exercises[i]; attemptCount=0;exerciseScored=false;
+ zoomLevel=1; panX=0; panY=0;
+ applyZoom();
+ document.getElementById("checkBtn").disabled=false;
+ document.getElementById("nextBtn").disabled=true;
+ document.getElementById("feedback").className="feedback";
+ document.getElementById("feedback").textContent="";
+ document.getElementById("question").textContent=`Calculer la longueur ${ex.target}. Donner le résultat en cm.`;
+ draw(ex);showData(ex);buildForm(ex);updateScore();
+}
+function showData(d){
+ const b=document.getElementById("dataBox");
+ if(d.type==="Triangles emboîtés")
+   b.innerHTML=`<strong>Longueurs connues :</strong> AB = ${fmt(d.known.AB)} cm · AC = ${fmt(d.known.AC)} cm · AE = ${fmt(d.known.AE)} cm · BC = ${fmt(d.known.BC)} cm`;
+ else
+   b.innerHTML=`<strong>Longueurs connues :</strong> AO = ${fmt(d.known.AO)} cm · OB = ${fmt(d.known.OB)} cm · CO = ${fmt(d.known.CO)} cm`;
+}
+
+function validateExercise(d){
+  // Vérifications structurelles communes.
+  if(!d || !d.points || !d.known || !d.answer) return false;
+
+  if(d.type==="Triangles emboîtés"){
+    const {AB,AC,AE,BC}=d.known;
+    const r=AE/AB;
+    // Triangle valide + E intérieur à AB + coefficient de Thalès exact.
+    if(!(AB>0 && AC>0 && BC>0 && AE>0 && AE<AB)) return false;
+    if([AB,AC,AE,BC,d.answer].some(v=>Math.abs(v*10-Math.round(v*10))>1e-9)) return false;
+    if(!(Math.abs(AB-AC)<BC && BC<AB+AC)) return false;
+    if(Math.abs(AB-AC)<0.35 || Math.abs(AB-BC)<0.35 || Math.abs(AC-BC)<0.35) return false;
+    if(!(Math.abs(r-d.answer/BC)<1e-12)) return false;
+    const ABvec=Math.hypot(d.points.B.x-d.points.A.x,d.points.B.y-d.points.A.y);
+    const AEvec=Math.hypot(d.points.E.x-d.points.A.x,d.points.E.y-d.points.A.y);
+    const ACvec=Math.hypot(d.points.C.x-d.points.A.x,d.points.C.y-d.points.A.y);
+    const AFvec=Math.hypot(d.points.F.x-d.points.A.x,d.points.F.y-d.points.A.y);
+    if(!(ABvec>0 && ACvec>0 && Math.abs(AEvec/ABvec-r)<1e-9 && Math.abs(AFvec/ACvec-r)<1e-9)) return false;
+    return true;
+  }
+
+  const {AO,OB,CO}=d.known;
+  const OD=d.answer;
+  if(!(AO>0 && OB>0 && CO>0 && OD>0)) return false;
+  if([AO,OB,CO,OD].some(v=>Math.abs(v*10-Math.round(v*10))>1e-9)) return false;
+  if(!(Math.abs(AO/OB-CO/OD)<1e-10)) return false;
+
+  // (AC) // (BD) : les deux vecteurs doivent être colinéaires.
+  const p=d.points;
+  const ac=[p.C.x-p.A.x,p.C.y-p.A.y];
+  const bd=[p.D.x-p.B.x,p.D.y-p.B.y];
+  const cross=ac[0]*bd[1]-ac[1]*bd[0];
+  const norm=Math.hypot(ac[0],ac[1])*Math.hypot(bd[0],bd[1]);
+  return norm>0 && Math.abs(cross/norm)<1e-10;
+}
+
+function selfTestRatioOrder(){
+ // Tests ciblés : les 3 rapports peuvent être placés dans n'importe quel ordre.
+ const expected=[["OA","OB"],["OC","OD"],["AC","BD"]];
+ const match=(actual)=>permute(expected).some(order=>
+   [false,true].some(inverted=>actual.every((r,i)=>ratioPairSame(r,order[i],inverted)))
+ );
+ const perms=permute(expected);
+ if(!perms.every(match)) throw new Error("Test de permutation des rapports invalide.");
+ const inverted=expected.map(r=>[r[1],r[0]]);
+ if(!match(inverted)) throw new Error("Test d'inversion des rapports invalide.");
+}
+
+function selfTestGenerators(){
+  // Beaucoup de tirages indépendants avant de démarrer la série.
+  for(let i=0;i<100;i++){
+    if(!validateExercise(makeNested())) throw new Error("Génération Thalès emboîté incohérente.");
+    if(!validateExercise(makeButterfly())) throw new Error("Génération Thalès papillon incohérente.");
+  }
+}
+function newSession(){
+  selfTestGenerators();
+  selfTestRatioOrder();
+  const nested=[makeNested(),makeNested()], butterfly=makeButterfly();
+  exercises=[...nested,butterfly].sort(()=>Math.random()-0.5);
+  if(exercises.some(d=>!validateExercise(d))) throw new Error("Exercice généré incohérent.");
+  totalScore=0;sessionHintsUsed=0;hintUsed=0;loadExercise(0);
+}
+emailjs.init({publicKey:"ATJ81EsZMjUM7kMEV"});
+document.getElementById("sendResultBtn").addEventListener("click",async()=>{
+ const prenom=document.getElementById("studentFirstName").value.trim();
+ const classe=document.getElementById("studentClass").value.trim();
+ const status=document.getElementById("sendStatus"),btn=document.getElementById("sendResultBtn");
+ if(!prenom||!classe){status.className="feedback bad";status.textContent="Merci d'indiquer ton prénom et ta classe.";return;}
+ btn.disabled=true;status.className="feedback";status.style.display="block";status.textContent="Envoi en cours…";
+ try{
+  await emailjs.send("service_ddxhm89","template_ycpslgy",{prenom,classe,score:`${totalScore} / 6`,indices:String(sessionHintsUsed),indice:String(sessionHintsUsed),nombre_indices:String(sessionHintsUsed),indices_utilises:String(sessionHintsUsed),nb_indices:String(sessionHintsUsed),date:new Date().toLocaleString("fr-FR")});
+  status.className="feedback good";status.textContent="Résultat envoyé avec succès.";
+ }catch(err){
+  status.className="feedback bad";status.textContent=`L’envoi a échoué (${err?.status||"?"}) : ${err?.text||err?.message||"Erreur inconnue"}`;btn.disabled=false;
+ }
+});
+document.getElementById("checkBtn").addEventListener("click",check);
+initZoom();
+document.getElementById("nextBtn").addEventListener("click",()=>{
+ if(!exerciseScored || currentIndex>=2)return;
+ loadExercise(currentIndex+1);
+});
+newSession();
+
+</script>
+</body>
+</html>

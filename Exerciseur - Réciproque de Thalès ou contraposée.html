@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exerciseur — Vérifier si des droites sont parallèles · 3e</title>
+<style>
+:root{--ok:#16834b;--bad:#c62828;--ink:#243044;--muted:#64748b;--bg:#f5f7fb;--card:#fff;--accent:#315efb}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink)}
+header{background:#172554;color:#fff;padding:22px 28px}header h1{margin:0 0 5px;font-size:1.45rem}header p{margin:0;opacity:.9}
+main{max-width:1120px;margin:22px auto;padding:0 16px}.topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+button{border:0;border-radius:9px;padding:11px 16px;font-weight:700;cursor:pointer}.primary{background:var(--accent);color:#fff}.secondary{background:#e8edf7;color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(350px,1fr) minmax(430px,1fr);gap:18px;margin-top:16px}.card{background:var(--card);border-radius:14px;padding:20px;box-shadow:0 2px 12px #1e293b12}.card h2{font-size:1.05rem;margin:0 0 14px}
+.diagram-wrap{position:relative;overflow:hidden;border-radius:10px}#diagram{width:100%;height:390px;border:1px solid #dbe2ee;border-radius:10px;background:#fff;display:block;overflow:visible;cursor:grab;touch-action:none;user-select:none}#diagram.dragging{cursor:grabbing}
+.zoom-controls{position:absolute;z-index:2;top:10px;right:10px;display:flex;gap:6px}.zoom-btn{min-width:42px;padding:7px 10px;font-size:1.05rem;line-height:1}
+.data-box{margin-top:14px;padding:12px 15px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;line-height:1.7}.data-box strong{font-weight:750}
+.statement{font-size:1.05rem;line-height:1.5;padding:13px 15px;background:#eef3ff;border-left:4px solid var(--accent);border-radius:8px;margin-top:14px}.step{border-top:1px solid #e5e7eb;padding-top:15px;margin-top:15px}.row{margin:12px 0;line-height:1.8}
+select,input{font:inherit;border:1px solid #b9c3d3;border-radius:7px;padding:6px 8px;background:#fff}select{min-width:95px}.point-select{min-width:70px}input.short{width:82px;text-align:center}.ratio-input{width:78px;text-align:center}
+.fracs{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.frac{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.05;margin:0 3px}.frac input{width:78px;text-align:center;padding:5px}.frac .den{border-top:1px solid #243044}
+.calc-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ratio-calc-block{margin-top:10px}.ratio-line{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin:10px 0}.ratio-line .frac input{width:78px}.ratio-line .calc-input{width:92px}.calc-row input{width:90px;text-align:center}.feedback{margin-top:18px;padding:12px 14px;border-radius:9px;display:none}.feedback.good{display:block;background:#edf9f1;color:var(--ok)}.feedback.bad{display:block;background:#fff0f0;color:var(--bad)}
+.correction{display:block;color:var(--bad);font-weight:700;margin-top:8px}.okmark{color:var(--ok);font-weight:700}.small{color:var(--muted);font-size:.92rem}.conclusion-line{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;line-height:1.8}.conclusion-line .frac{flex:0 0 auto}.conclusion-line select{min-height:44px}.conclusion-line .ratio-input{width:84px}.conclusion-line span:not(.frac){text-align:center}
+.compare-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}.compare-line .frac input{width:78px}
+@media(max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+<header>
+  <h1>Séquence : Théorème de Thalès et sa réciproque</h1>
+  <p>Je m'entraine à vérifier si des droites sont parallèles</p>
+</header>
+<main>
+  <div class="topbar">
+    <div><b id="progressLabel">Exercice 1 / 3</b> · <b id="scoreLabel">Score : 0 / 6 pts</b></div>
+    <div><button class="primary" id="checkBtn">Vérifier</button>
+    <button class="secondary" id="nextBtn" disabled>Exercice suivant</button></div>
+  </div>
+  <div class="grid">
+    <section class="card">
+      <h2>1. Observer la figure</h2>
+      <div class="diagram-wrap">
+        <svg id="diagram" viewBox="0 0 520 390" aria-label="Figure géométrique"></svg>
+        <div class="zoom-controls"><button class="secondary zoom-btn" id="zoomOut">−</button><button class="secondary zoom-btn" id="zoomReset">100 %</button><button class="secondary zoom-btn" id="zoomIn">+</button></div>
+      </div>
+      <div class="data-box" id="dataBox"></div>
+    </section>
+    <section class="card">
+      <h2>2. Compléter la rédaction</h2>
+      <div id="form"></div>
+      <div id="feedback" class="feedback"></div>
+    
+    </section>
+  </div>
+  <section class="card" id="resultCard" style="display:none;margin-top:18px">
+    <h2>3. Envoyer le résultat</h2>
+    <p>Indique ton prénom et ta classe, puis clique sur <b>Envoyer</b>.</p>
+    <div class="row" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <label>Prénom : <input id="studentFirstName" autocomplete="given-name"></label>
+      <label>Classe : <input id="studentClass" autocomplete="off" placeholder="ex. 3A"></label>
+    </div>
+    <div class="data-box" id="resultPreview"></div>
+    <button class="primary" id="sendResultBtn">Envoyer</button>
+    <div id="resultStatus" class="feedback"></div>
+  </section>
+</main>
+<script>
+'use strict';
+const NS='http://www.w3.org/2000/svg';
+const pointSets = [
+  ['A','B','C','D','E','F','O'],
+  ['A','B','C','D','E','G','O'],
+  ['A','B','C','D','F','G','O'],
+  ['A','B','D','E','F','G','O'],
+  ['A','C','D','E','F','G','O']
+];
+let pointNames = pointSets[0];
+const ratios=[[1,2],[1,3],[2,3],[3,4],[2,5],[3,5],[3,7],[4,7],[5,8],[7,10]];
+let exercises=[],currentIndex=0,ex=null,attemptCount=0,exerciseScored=false,totalScore=0;
+let zoom=1,panX=0,panY=0,dragState=null;
+
+function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+function choice(a){return a[rand(0,a.length-1)]}
+function choosePointNames(){
+  pointNames = choice(pointSets);
+  return pointNames;
+}
+function fmt(n){return Number.isInteger(n)?String(n):String(Math.round(n*10)/10).replace('.',',')}
+function num(id){const s=(document.getElementById(id)?.value||'').trim().replace(',','.');return s===''?NaN:Number(s)}
+function numeq(a,b){return Number.isFinite(a)&&Math.abs(a-b)<1e-9}
+function segKey(s){return (s||'').trim().toUpperCase().replace(/\s/g,'').split('').sort().join('')}
+function pairEq(a,b){return segKey(a)===segKey(b)}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+
+function fitPoints(points){
+  const vals=Object.values(points);
+  const xs=vals.map(p=>p.x), ys=vals.map(p=>p.y);
+  const minX=Math.min(...xs), maxX=Math.max(...xs), minY=Math.min(...ys), maxY=Math.max(...ys);
+  const w=maxX-minX || 1, h=maxY-minY || 1;
+  const targetW=430, targetH=315;
+  const scale=Math.min(targetW/w,targetH/h);
+  const cx=(minX+maxX)/2, cy=(minY+maxY)/2;
+  return Object.fromEntries(Object.entries(points).map(([name,p])=>[
+    name,{x:260+(p.x-cx)*scale,y:195+(p.y-cy)*scale}
+  ]));
+}
+
+
+function renamePoints(d){
+  // Les coordonnées et les longueurs restent stockées avec les noms internes
+  // A, B, C... ; seuls les noms affichés à l'élève changent.
+  const oldNames=Object.keys(d.points);
+  const names=[...pointNames];
+  // On mélange les noms pour que les rapports et les triplets changent réellement.
+  names.sort(()=>Math.random()-0.5);
+  const map={};
+  oldNames.forEach((oldName,i)=>map[oldName]=names[i]);
+
+  const renameSeg=s=>s.replace(/[A-GO]/g,ch=>map[ch]||ch);
+  d.labelMap=map;
+  d.displayNames=oldNames.map(k=>map[k]);
+  d.aligned=d.aligned.map(t=>t.map(x=>map[x]));
+  d.ratioPairs=d.ratioPairs.map(pair=>pair.map(renameSeg));
+  d.parallelLines=d.parallelLines.map(renameSeg);
+  d.target=renameSeg(d.target);
+  return d;
+}
+
+function makeNested(){
+  choosePointNames();
+  for(let t=0;t<1000;t++){
+    const [p,q]=choice(ratios);
+    const k10=rand(20,50), m10=rand(45,80);
+    const AB10=q*k10, AE10=p*k10, AC10=q*m10;
+    const parallel=Math.random()<0.5;
+    let AF10;
+    if(parallel){
+      AF10=p*m10;
+    }else{
+      // Configuration volontairement très proche du parallélisme :
+      // les deux rapports diffèrent légèrement, sans que la figure soit manifestement fausse.
+      const delta=choice([-6,-5,-4,-3,3,4,5,6]);
+      AF10=p*m10+delta;
+      if(AF10<=10 || AF10>=AC10-5) continue;
+    }
+    const r1=AE10/AB10, r2=AF10/AC10;
+    if(!parallel && (Math.abs(r1-r2)<0.001 || Math.abs(r1-r2)>0.025)) continue;
+    const ang=rand(42,78)*Math.PI/180;
+    const AB=AB10/10, AC=AC10/10, AE=AE10/10, AF=AF10/10;
+    const A={x:260,y:105};
+    const B={x:260-AB*Math.cos(ang)*7.0,y:105+AB*Math.sin(ang)*7.0};
+    const C={x:260+AC*Math.cos(ang)*7.0,y:105+AC*Math.sin(ang)*7.0};
+    const E={x:A.x+(B.x-A.x)*(AE/AB),y:A.y+(B.y-A.y)*(AE/AB)};
+    const F={x:A.x+(C.x-A.x)*(AF/AC),y:A.y+(C.y-A.y)*(AF/AC)};
+    return renamePoints({type:'Triangles emboîtés',points:fitPoints({A,B,C,E,F}),known:{AB,AC,AE,AF},parallel,parallelLines:['(EF)','(BC)'],aligned:[['B','A','E'],['C','A','F']],ratioPairs:[['AE','AB'],['AF','AC']],target:'(EF) et (BC)'});
+  }
+  throw new Error('Impossible de générer une configuration emboîtée.');
+}
+
+function makeButterfly(){
+  choosePointNames();
+  for(let t=0;t<1000;t++){
+    const [p,q]=choice(ratios);
+    const k10=rand(20,50), m10=rand(45,80);
+    const AO10=p*k10, OB10=q*k10, CO10=p*m10;
+    const parallel=Math.random()<0.5;
+    let OD10;
+    if(parallel){
+      OD10=q*m10;
+    }else{
+      // Les rapports sont proches, mais pas égaux.
+      const delta=choice([-6,-5,-4,-3,3,4,5,6]);
+      OD10=q*m10+delta;
+      if(OD10<=10) continue;
+    }
+    const r1=AO10/OB10, r2=CO10/OD10;
+    if(!parallel && (Math.abs(r1-r2)<0.001 || Math.abs(r1-r2)>0.025)) continue;
+    const AO=AO10/10,OB=OB10/10,CO=CO10/10,OD=OD10/10;
+    const s=9;
+    const A2={x:260-AO*s*0.65,y:195-AO*s*0.65};
+    const B2={x:260+OB*s*0.65,y:195+OB*s*0.65};
+    const C2={x:260-CO*s*0.65,y:195+CO*s*0.35};
+    const D2={x:260+OD*s*0.65,y:195-OD*s*0.35};
+    return renamePoints({type:'Configuration en papillon',points:fitPoints({A:A2,B:B2,C:C2,D:D2,O:{x:260,y:195}}),known:{AO,OB,CO,OD},parallel,parallelLines:['(AC)','(BD)'],aligned:[['A','O','B'],['C','O','D']],ratioPairs:[['AO','OB'],['CO','OD']],target:'(AC) et (BD)'});
+  }
+  throw new Error('Impossible de générer une configuration papillon.');
+}
+
+function svgEl(tag,attrs){const e=document.createElementNS(NS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);return e}
+function draw(d){
+  const svg=document.getElementById('diagram');svg.innerHTML='';
+  const P=d.canonicalPoints||d.points;
+  const g=svgEl('g',{transform:`translate(${panX} ${panY}) translate(260 195) scale(${zoom}) translate(-260 -195)`});
+  const line=(a,b)=>g.appendChild(svgEl('line',{x1:P[a].x,y1:P[a].y,x2:P[b].x,y2:P[b].y,stroke:'#334155','stroke-width':3,'stroke-linecap':'round'}));
+  if(d.type==='Triangles emboîtés'){line('A','B');line('A','C');line('E','F');line('B','C')}
+  else {line('A','B');line('C','D');line('A','C');line('B','D')}
+  for(const [name,p] of Object.entries(P)){
+    g.appendChild(svgEl('circle',{cx:p.x,cy:p.y,r:5.5,fill:'#172554'}));
+    const dx=name==='A'?-9:name==='B'?7:name==='C'?-22:name==='D'?7:name==='E'?-24:name==='F'?7:-7;
+    const dy=name==='A'?-12:name==='B'?14:name==='C'?14:name==='D'?-10:name==='E'?-8:name==='F'?-8:-8;
+    const tx=svgEl('text',{x:p.x+dx,y:p.y+dy,fill:'#172554','font-size':18,'font-weight':700});tx.textContent=(d.labelMap&&d.labelMap[name])||name;g.appendChild(tx);
+  }
+  svg.appendChild(g);
+}
+function applyZoom(){document.getElementById('zoomReset').textContent=Math.round(zoom*100)+' %';draw(ex)}
+function initZoom(){
+  document.getElementById('zoomOut').onclick=()=>{zoom=Math.max(.6,Math.round((zoom-.1)*10)/10);applyZoom()};
+  document.getElementById('zoomIn').onclick=()=>{zoom=Math.min(2.2,Math.round((zoom+.1)*10)/10);applyZoom()};
+  document.getElementById('zoomReset').onclick=()=>{zoom=1;panX=0;panY=0;applyZoom()};
+  const svg=document.getElementById('diagram');
+  svg.addEventListener('pointerdown',e=>{dragState={x:e.clientX,y:e.clientY,px:panX,py:panY};svg.classList.add('dragging');svg.setPointerCapture(e.pointerId)});
+  svg.addEventListener('pointermove',e=>{if(!dragState)return;panX=dragState.px+(e.clientX-dragState.x);panY=dragState.py+(e.clientY-dragState.y);draw(ex)});
+  const end=()=>{dragState=null;svg.classList.remove('dragging')};svg.addEventListener('pointerup',end);svg.addEventListener('pointercancel',end);
+}
+function displaySeg(d,seg){
+  return seg.replace(/[A-GO]/g,ch=>d.labelMap?.[ch]||ch);
+}
+function showData(d){
+  const b=document.getElementById('dataBox');
+  const k=d.known;
+  if(d.type==='Triangles emboîtés'){
+    b.innerHTML=`<strong>Longueurs connues :</strong> ${displaySeg(d,'AB')} = ${fmt(k.AB)} cm · ${displaySeg(d,'AC')} = ${fmt(k.AC)} cm · ${displaySeg(d,'AE')} = ${fmt(k.AE)} cm · ${displaySeg(d,'AF')} = ${fmt(k.AF)} cm<br><strong>Droites à étudier :</strong> ${escapeHtml(d.parallelLines[0])} et ${escapeHtml(d.parallelLines[1])}`;
+  }else{
+    b.innerHTML=`<strong>Longueurs connues :</strong> ${displaySeg(d,'AO')} = ${fmt(k.AO)} cm · ${displaySeg(d,'OB')} = ${fmt(k.OB)} cm · ${displaySeg(d,'CO')} = ${fmt(k.CO)} cm · ${displaySeg(d,'OD')} = ${fmt(k.OD)} cm<br><strong>Droites à étudier :</strong> ${escapeHtml(d.parallelLines[0])} et ${escapeHtml(d.parallelLines[1])}`;
+  }
+}
+function pointSelect(id,d){const names=d.displayNames;return `<select id="${id}" class="point-select"><option value="">...</option>${names.map(p=>`<option value="${p}">${p}</option>`).join('')}</select>`}
+
+function input(id,cls='ratio-input'){return `<input id="${id}" class="${cls}" autocomplete="off">`}
+function buildForm(d){
+  const f=document.getElementById('form');
+  f.innerHTML=`
+  <div class="step"><b>1. On vérifie les hypothèses :</b>
+    <div class="row">Les points ${pointSelect('a1',d)} , ${pointSelect('a1b',d)} et ${pointSelect('a1c',d)} sont alignés. De même, les points ${pointSelect('a2',d)} , ${pointSelect('a2b',d)} et ${pointSelect('a2c',d)} sont alignés dans le même ordre.</div>
+  </div>
+  <div class="step"><b>2. On calcule les deux rapports :</b>
+    <div class="small">Écris les deux rapports avec les noms des longueurs, puis remplace les noms par les valeurs connues.</div>
+    <div class="ratio-calc-block">
+      <div class="ratio-line">
+        <span class="frac">${input('r1n')}<span class="den">${input('r1d')}</span></span>
+        =
+        <span class="frac">${input('r1vn')}<span class="den">${input('r1vd')}</span></span>
+      </div>
+      <div class="ratio-line">
+        <span class="frac">${input('r2n')}<span class="den">${input('r2d')}</span></span>
+        =
+        <span class="frac">${input('r2vn')}<span class="den">${input('r2vd')}</span></span>
+      </div>
+    </div>
+  </div>
+  <div class="step"><b>3. Conclure :</b>
+    <div class="conclusion-line">
+      <span>Comme</span>
+      <span class="frac">${input('c1n')}<span class="den">${input('c1d')}</span></span>
+      <select id="comparison"><option value="">...</option><option value="=">=</option><option value="≠">≠</option></select>
+      <span class="frac">${input('c2n')}<span class="den">${input('c2d')}</span></span>
+      <span>, alors les droites ${escapeHtml(d.parallelLines[0])} et ${escapeHtml(d.parallelLines[1])}</span>
+      <select id="conclusion"><option value="">...</option><option value="oui">sont parallèles</option><option value="non">ne sont pas parallèles</option></select>
+      <span>.</span>
+    </div>
+  </div>
+`;
+  const mirror=(srcN,srcD,dstN,dstD)=>{
+    const dstNum=document.getElementById(dstN),dstDen=document.getElementById(dstD);
+    dstNum.readOnly=true;dstDen.readOnly=true;
+    const sync=()=>{dstNum.value=document.getElementById(srcN).value;dstDen.value=document.getElementById(srcD).value};
+    document.getElementById(srcN).addEventListener('input',sync);document.getElementById(srcD).addEventListener('input',sync);sync();
+  };
+  mirror('r1n','r1d','c1n','c1d');mirror('r2n','r2d','c2n','c2d');
+}
+
+function alignedOK(d){
+  const got1=[document.getElementById('a1').value,document.getElementById('a1b').value,document.getElementById('a1c').value];
+  const got2=[document.getElementById('a2').value,document.getElementById('a2b').value,document.getElementById('a2c').value];
+  const A=d.aligned;
+  if(got1.includes('')||got2.includes('')) return false;
+  // L'ordre absolu n'a pas d'importance : seule la correspondance des rôles
+  // entre les deux triplets compte. Toute permutation commune des 3 rôles est acceptée.
+  const perms=[[0,1,2],[0,2,1],[1,0,2],[1,2,0],[2,0,1],[2,1,0]];
+  return perms.some(p=>p.every((idx,pos)=>got1[pos]===A[0][idx]&&got2[pos]===A[1][idx]));
+}
+function canonicalRatio(a,b){return [segKey(a),segKey(b)]}
+function ratioPairMatch(gotN,gotD,expected){return pairEq(gotN,expected[0])&&pairEq(gotD,expected[1])}
+function ratiosAreCorrect(d){
+  const g=[[document.getElementById('r1n').value,document.getElementById('r1d').value],[document.getElementById('r2n').value,document.getElementById('r2d').value]];
+  const e=d.ratioPairs;
+  const direct=(ratioPairMatch(g[0][0],g[0][1],e[0])&&ratioPairMatch(g[1][0],g[1][1],e[1]))||(ratioPairMatch(g[0][0],g[0][1],e[1])&&ratioPairMatch(g[1][0],g[1][1],e[0]));
+  const inverse=(pairEq(g[0][0],e[0][1])&&pairEq(g[0][1],e[0][0])&&pairEq(g[1][0],e[1][1])&&pairEq(g[1][1],e[1][0]))||(pairEq(g[0][0],e[1][1])&&pairEq(g[0][1],e[1][0])&&pairEq(g[1][0],e[0][1])&&pairEq(g[1][1],e[0][0]));
+  return direct||inverse;
+}
+function lengthValue(d,seg){
+  const internalSeg=(seg||'').trim().toUpperCase().replace(/\s/g,'').split('').map(ch=>{
+    const entry=Object.entries(d.labelMap||{}).find(([internal,display])=>display===ch);
+    return entry?entry[0]:ch;
+  }).join('');
+  const get={
+    [segKey('AB')]:d.known.AB,[segKey('AC')]:d.known.AC,[segKey('AE')]:d.known.AE,[segKey('AF')]:d.known.AF,
+    [segKey('AO')]:d.known.AO,[segKey('OB')]:d.known.OB,[segKey('CO')]:d.known.CO,[segKey('OD')]:d.known.OD
+  };
+  return get[segKey(internalSeg)];
+}
+
+function ratioValueFromFields(d,nId,dId){
+  const n=document.getElementById(nId).value,den=document.getElementById(dId).value;
+  const a=lengthValue(d,n),b=lengthValue(d,den);
+  return Number.isFinite(a)&&Number.isFinite(b)&&b!==0?a/b:NaN;
+}
+function numericFractionOK(d,nId,dId,vnId,vdId){
+  const n=document.getElementById(nId).value,den=document.getElementById(dId).value;
+  const vn=num(vnId),vd=num(vdId);
+  const a=lengthValue(d,n),b=lengthValue(d,den);
+  return Number.isFinite(a)&&Number.isFinite(b)&&Number.isFinite(vn)&&Number.isFinite(vd)&&b!==0&&numeq(vn,a)&&numeq(vd,b);
+}
+function ratioVariantPairs(d){
+  const a=d.ratioPairs[0],b=d.ratioPairs[1];
+  return [[a,b],[b,a],[[a[1],a[0]],[b[1],b[0]]],[[b[1],b[0]],[a[1],a[0]]]];
+}
+function reportOK(d,nId,dId,vnId,vdId,expected){
+  return pairEq(document.getElementById(nId).value,expected[0])&&pairEq(document.getElementById(dId).value,expected[1])&&numericFractionOK(d,nId,dId,vnId,vdId);
+}
+function calcInputsOK(d){
+  return ratioVariantPairs(d).some(v=>reportOK(d,'r1n','r1d','r1vn','r1vd',v[0])&&reportOK(d,'r2n','r2d','r2vn','r2vd',v[1]));
+}
+function comparisonOK(d){
+  const sym=document.getElementById('comparison').value;
+  const p1=[document.getElementById('r1n').value,document.getElementById('r1d').value];
+  const p2=[document.getElementById('r2n').value,document.getElementById('r2d').value];
+  if(!pairEq(document.getElementById('c1n').value,p1[0])||!pairEq(document.getElementById('c1d').value,p1[1])||!pairEq(document.getElementById('c2n').value,p2[0])||!pairEq(document.getElementById('c2d').value,p2[1])) return false;
+  const v1=ratioValueFromFields(d,'r1n','r1d'),v2=ratioValueFromFields(d,'r2n','r2d');
+  if(!Number.isFinite(v1)||!Number.isFinite(v2)||!sym) return false;
+  return sym==='=' ? Math.abs(v1-v2)<1e-9 : Math.abs(v1-v2)>=1e-9;
+}
+function conclusionOK(d){return document.getElementById('conclusion').value===(d.parallel?'oui':'non')}
+
+function mark(id,ok){const e=document.getElementById(id);if(!e)return;e.style.borderColor=ok?'#16834b':'#c62828';e.style.background=ok?'#f0fff5':'#fff5f5'}
+function correction(text){return `<span class="correction">Correction : ${text}</span>`}
+function expectedRatiosText(d){return `${d.ratioPairs[0][0]} / ${d.ratioPairs[0][1]} = ${d.ratioPairs[1][0]} / ${d.ratioPairs[1][1]}`}
+function validateExercise(d){
+  if(!d||!d.points||!d.known||!d.ratioPairs)return false;
+  const vals=Object.values(d.known);return vals.every(v=>Number.isFinite(v)&&Math.abs(v*10-Math.round(v*10))<1e-9);
+}
+function check(){
+  if(exerciseScored)return;attemptCount++;
+  const a=alignedOK(ex),c=calcInputsOK(ex),cmp=comparisonOK(ex),co=conclusionOK(ex);const all=a&&c&&cmp&&co;
+  ['a1','a1b','a1c','a2','a2b','a2c'].forEach(id=>mark(id,a));
+  const numericOK1=numericFractionOK(ex,'r1n','r1d','r1vn','r1vd');
+  const numericOK2=numericFractionOK(ex,'r2n','r2d','r2vn','r2vd');
+  ['r1n','r1d','r1vn','r1vd'].forEach(id=>mark(id,numericOK1));['r2n','r2d','r2vn','r2vd'].forEach(id=>mark(id,numericOK2));
+  ['c1n','c1d','c2n','c2d'].forEach(id=>mark(id,cmp));mark('comparison',cmp);mark('conclusion',co);
+  const fb=document.getElementById('feedback');fb.innerHTML='';
+  if(all){const pts=attemptCount===1?2:1;totalScore+=pts;exerciseScored=true;fb.className='feedback good';fb.textContent=`Bravo ! Tout est correct. +${pts} pt${pts>1?'s':''}.`;document.getElementById('checkBtn').disabled=true;document.getElementById('nextBtn').disabled=false}
+  else if(attemptCount>=2){
+    exerciseScored=true;fb.className='feedback bad';
+    let msg='Il reste des erreurs. Cet exercice vaut 0 pt.';
+    if(!a)msg+=correction(ex.aligned[0].join(' – ')+' et '+ex.aligned[1].join(' – '));
+    if(!c)msg+=correction(`Rapports attendus : ${expectedRatiosText(ex)} ; avec les valeurs correspondantes.`);
+    if(!cmp)msg+=correction(ex.parallel?'Les deux rapports sont égaux (=).':'Les deux rapports sont différents (≠).');
+    if(!co)msg+=correction(ex.parallel?'Oui, les droites sont parallèles.':'Non, les droites ne sont pas parallèles.');
+    fb.innerHTML=msg;document.getElementById('checkBtn').disabled=true;document.getElementById('nextBtn').disabled=false
+  }else {fb.className='feedback bad';fb.textContent='Il y a encore des erreurs. Corrige-les puis vérifie à nouveau. C’est ta 1re vérification.'}
+  updateScore();
+}
+
+function updateScore(){
+  document.getElementById('scoreLabel').textContent=`Score : ${totalScore} / 6 pts`;
+  document.getElementById('progressLabel').textContent=`Exercice ${currentIndex+1} / 3`;
+  if(currentIndex===2 && exerciseScored){showResultCard();}
+}
+function showResultCard(){
+  const card=document.getElementById('resultCard');
+  card.style.display='block';
+  document.getElementById('resultPreview').innerHTML=`<strong>Résultat :</strong> ${totalScore} / 6 pts<br><strong>Date et heure :</strong> ${new Date().toLocaleString('fr-FR')}`;
+  card.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function sendResult(){
+  const firstName=document.getElementById('studentFirstName').value.trim();
+  const studentClass=document.getElementById('studentClass').value.trim();
+  const status=document.getElementById('resultStatus');
+  const btn=document.getElementById('sendResultBtn');
+  if(!firstName || !studentClass){
+    status.className='feedback bad';
+    status.textContent='Indique ton prénom et ta classe.';
+    return;
+  }
+  const date=new Date().toLocaleString('fr-FR');
+  const templateParams={
+    prenom:firstName,
+    classe:studentClass,
+    score:String(totalScore),
+    total:'6',
+    date:date
+  };
+  btn.disabled=true;
+  status.className='feedback good';
+  status.textContent='Envoi en cours…';
+  emailjs.send('service_ddxhm89','template_sgg3zmj',templateParams)
+    .then(()=>{
+      status.className='feedback good';
+      status.textContent='Résultat envoyé. Merci !';
+      btn.textContent='Envoyé';
+    })
+    .catch((error)=>{
+      console.error('Erreur EmailJS :',error);
+      status.className='feedback bad';
+      status.textContent='L’envoi a échoué. Vérifie la connexion Internet puis réessaie.';
+      btn.disabled=false;
+    });
+}
+function loadExercise(i){currentIndex=i;ex=exercises[i];attemptCount=0;exerciseScored=false;zoom=1;panX=0;panY=0;document.getElementById('checkBtn').disabled=false;document.getElementById('nextBtn').disabled=i>=2;document.getElementById('feedback').className='feedback';document.getElementById('feedback').textContent='';showData(ex);buildForm(ex);applyZoom();updateScore();}
+function newSession(){
+  for(let t=0;t<100;t++){
+    const arr=[makeNested(),makeNested(),makeButterfly()];if(arr.every(validateExercise)){exercises=arr.sort(()=>Math.random()-.5);break}
+    if(t===99)throw new Error('Échec de génération');
+  }
+  totalScore=0;document.getElementById('resultCard').style.display='none';document.getElementById('studentFirstName').value='';document.getElementById('studentClass').value='';document.getElementById('resultStatus').className='feedback';document.getElementById('resultStatus').textContent='';document.getElementById('sendResultBtn').disabled=false;document.getElementById('sendResultBtn').textContent='Envoyer';loadExercise(0);
+}
+document.getElementById('checkBtn').addEventListener('click',check);
+document.getElementById('nextBtn').addEventListener('click',()=>{if(currentIndex<2)loadExercise(currentIndex+1)});
+
+document.getElementById('sendResultBtn').addEventListener('click',sendResult);
+emailjs.init({publicKey:'ATJ81EsZMjUM7kMEV'});
+initZoom();newSession();
+</script>
+</body></html>
